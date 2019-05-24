@@ -21,6 +21,8 @@ func main() {
             wemoweb.Discover(config)
         } else if os.Args[1] == "server" {
             wemoweb.StartHttp(config)
+        } else {
+            log.Fatalf("Unknown command: %s\n", os.Args[1])
         }
     }
 }
