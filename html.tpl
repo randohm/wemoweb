@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Wemo Control</title>
+  <title>WemoWeb</title>
   <style TYPE="text/css">
 <!--
 body {
@@ -20,6 +20,14 @@ table.device_table {
   width: 500px;
 }
 
+tr.device_tr_active {
+  background: #00aa00
+}
+
+tr.device_tr_inactive {
+  background: #aaaaaa
+}
+
 td.device_td {
   padding: 5px;
 }
@@ -27,6 +35,8 @@ td.device_td {
 button.action_button {
   font-size: 18px;
 }
+
+
 
 @media only screen and (max-width: 1080px) {
   body {
@@ -62,8 +72,9 @@ button.action_button {
 <table class="device_table">
 <tbody>
 {{range $key, $value := .DeviceData -}}
-<tr bgcolor="{{if eq $value.state "1"}}#00aa00{{else}}#aaaaaa{{end}}">
-    <td class="device_td">{{$key}}</td><td class="device_td"><button class="action_button" OnClick="window.location.href='/?op={{if eq $value.state "1"}}off{{else}}on{{end}}&dev={{$key}}'">{{if eq $value.state "1"}}Off{{else}}On{{end}}</button></td>
+<tr class="{{if eq $value.state "1"}}device_tr_active{{else}}device_tr_inactive{{end}}">
+    <td class="device_td">{{$key}}</td><td class="device_td">
+    <button class="action_button" OnClick="window.location.href='/?op={{if eq $value.state "1"}}off{{else}}on{{end}}&dev={{$key}}'">{{if eq $value.state "1"}}Off{{else}}On{{end}}</button></td>
 </tr>
 {{end -}}
 </tbody>
@@ -71,5 +82,8 @@ button.action_button {
 
 <a href="/">Refresh</a>
 
+<p>
+{{.Message}}
+</p>
 </body>
 </html>
