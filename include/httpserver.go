@@ -5,14 +5,31 @@ import (
     "html/template"
     "log"
     "fmt"
-    //"crypto/md5"
-    "github.com/savaki/go.wemo"
+    "crypto/md5"
+    "github.com/srandawa/go.wemo"
     "golang.org/x/net/context"
+    "io/ioutil"
+    "encoding/json"
 )
 
 
 
 var config_g Config_t
+var users map[string]string
+
+
+
+func ReadUsers() (map[string]string, error) {
+    log.Println("Reading in users file")
+    usersJson, err := ioutil.ReadFile(config_g.UsersFile)
+    if err != nil {
+        return map[string]string{}, err
+    }
+
+    var users map[string]string
+    err = json.Unmarshal(usersJson, &users)
+    return users, nil
+}
 
 
 
@@ -22,19 +39,30 @@ func HttpLog(r *http.Request) {
 
 
 
-func checkUserPass(user, pass string) bool {
-    //passMd5 := fmt.Sprintf("%x", md5.Sum([]byte(pass)))
+func CheckUserPass(user, pass string) bool {
+    if users == nil {
+        var err error
+        users, err = ReadUsers()
+        if err != nil {
+            return false
+        }
+    }
+    passMd5 := fmt.Sprintf("%x", md5.Sum([]byte(pass)))
+    if users[user] == passMd5 {
+        return true
+    }
+
     return false
 }
 
 
 
-func checkHttpAuth(w http.ResponseWriter, r *http.Request) bool {
+func CheckHttpAuth(w http.ResponseWriter, r *http.Request) bool {
     user, pass, ok := r.BasicAuth()
-    if !ok || !checkUserPass(user, pass) {
+    if !ok || !CheckUserPass(user, pass) {
         w.Header().Set("WWW-Authenticate", `Basic realm="wemoweb"`)
         w.WriteHeader(401)
-        w.Write([]byte("Unauthorised.\n"))
+        w.Write([]byte("Unauthorized.\n"))
         return false
     }
     return true
@@ -42,7 +70,7 @@ func checkHttpAuth(w http.ResponseWriter, r *http.Request) bool {
 
 
 
-func GenerateRootPage(w http.ResponseWriter, devices map[string]map[string]string) {
+func GenerateRootPage(w http.ResponseWriter, devices map[string]map[string]string, message string) {
     ctx := context.Background()
 
     for k, v := range devices {
@@ -55,9 +83,10 @@ func GenerateRootPage(w http.ResponseWriter, devices map[string]map[string]strin
     tmpl, _ := template.ParseFiles(config_g.HtmlTemplate)
     http_data := struct {
         DeviceData map[string]map[string]string
-        ActionResult string
+        Message string
     }{
         DeviceData: devices,
+        Message: message,
     }
     tmpl.Execute(w, http_data)
 }
@@ -66,11 +95,12 @@ func GenerateRootPage(w http.ResponseWriter, devices map[string]map[string]strin
 
 func HttpHandler(w http.ResponseWriter, r *http.Request) {
     if config_g.UsersFile != "" {
-        if !checkHttpAuth(w, r) {
+        if !CheckHttpAuth(w, r) {
             return
         }
     }
 
+    var message string
     devicesList, err := ReadDevices(config_g)
     if err != nil {
         log.Println(err)
@@ -79,28 +109,43 @@ func HttpHandler(w http.ResponseWriter, r *http.Request) {
     op, _ := r.URL.Query()["op"]
     dev, _ := r.URL.Query()["dev"]
     if len(op) > 0 && len(dev) > 0 {
+        device := &wemo.Device{Host:devicesList[dev[0]]["ip_port"]}
         switch op[0] {
             case "on":
                 log.Printf("Turning on %s\n", dev[0])
-                device := &wemo.Device{Host:devicesList[dev[0]]["ip_port"]}
-                device.On()
+                err = device.On()
+                if err != nil {
+                    message = fmt.Sprintf("Could not turn on %s: %s", dev[0], err)
+                } else {
+                    message = fmt.Sprintf("Turned on %s", dev[0])
+                }
             case "off":
                 log.Printf("Turning off %s\n", dev[0])
-                device := &wemo.Device{Host:devicesList[dev[0]]["ip_port"]}
-                device.Off()
+                err = device.Off()
+                if err != nil {
+                    message = fmt.Sprintf("Could not turn off %s: %s", dev[0], err)
+                } else {
+                    message = fmt.Sprintf("Turned off %s", dev[0])
+                }
         }
     }
-    GenerateRootPage(w, devicesList)
-    //log.Println(fmt.Sprintf("%+v", r))
+    GenerateRootPage(w, devicesList, message)
     HttpLog(r)
+    //fmt.Printf("%+v\n", r)
+}
+
+
+
+func IconHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 
 
 func StartHttp (config Config_t) {
     config_g = config
-    log.Println("Starting webserver")
+    log.Printf("Starting webserver on port %d\n", config.HttpPort)
     http.HandleFunc("/", HttpHandler)
+    http.HandleFunc("/favicon.ico", IconHandler)
     portStr := fmt.Sprintf(":%d", config.HttpPort)
     if config.UseTls == true {
         http.ListenAndServeTLS(portStr, config.TlsCertFile, config.TlsKeyFile, nil)
