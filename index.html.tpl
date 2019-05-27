@@ -28,6 +28,10 @@ tr.device_tr_inactive {
   background: #aaaaaa
 }
 
+tr.discover_tr {
+  background: #cccccc
+}
+
 td.device_td {
   padding: 5px;
 }
@@ -71,19 +75,31 @@ button.action_button {
 
 <table class="device_table">
 <tbody>
+{{ if (eq .Mode "main") -}}
+<tr><th>Device</th><th>On/Off</th></tr>
 {{range $key, $value := .DeviceData -}}
 <tr class="{{if eq $value.state "1"}}device_tr_active{{else}}device_tr_inactive{{end}}">
-    <td class="device_td">{{$key}}</td><td class="device_td">
-    <button class="action_button" OnClick="window.location.href='/?op={{if eq $value.state "1"}}off{{else}}on{{end}}&dev={{$key}}'">{{if eq $value.state "1"}}Off{{else}}On{{end}}</button></td>
+    <td class="device_td">{{$key}}</td>
+    <td class="device_td">
+        <button class="action_button" OnClick="window.location.href='/?op={{if eq $value.state "1"}}off{{else}}on{{end}}&dev={{$key}}'">{{if eq $value.state "1"}}Off{{else}}On{{end}}</button>
+    </td>
 </tr>
+{{end -}}
+{{ else if (eq .Mode "discover") -}}
+<tr><th>Discovered Device</th><th>IP:port</th></tr>
+{{range $key, $value := .DeviceData -}}
+<tr class="discover_tr">
+    <td class="device_td">{{$key}}</td><td class="device_td">{{$value.ip_port}}</td>
+</tr>
+{{end -}}
 {{end -}}
 </tbody>
 </table>
+<p><a href="/">Refresh</a></p>
 
-<a href="/">Refresh</a>
+<p><a href="/discover">Discover</a></p>
 
-<p>
-{{.Message}}
-</p>
+<p>{{.Message}}</p>
+
 </body>
 </html>
