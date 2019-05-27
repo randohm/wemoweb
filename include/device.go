@@ -4,6 +4,7 @@ import (
     "io/ioutil"
     "encoding/json"
     //"fmt"
+    "log"
 )
 
 
@@ -40,4 +41,20 @@ func WriteDevices(config Config_t, deviceList map[string]map[string]string) erro
         return err
     }
     return nil
+}
+
+
+
+func UpdateDevices(config Config_t, deviceList, newDevices map[string]map[string]string) bool {
+    changed := false
+    for k, v := range newDevices {
+        if v["ip_port"] != deviceList[k]["ip_port"] {
+            log.Printf("Found updated device: %s old:%s new: %s\n", k, deviceList[k], v)
+            deviceList[k]["ip_port"] = v["ip_port"]
+            changed = true
+        } /*else {
+            log.Printf("Found matching device: %s old:%s new: %s\n", k, deviceList[k], v)
+        }//*/
+    }
+    return changed
 }

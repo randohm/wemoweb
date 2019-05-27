@@ -10,7 +10,7 @@ import (
     "strings"
 )
 
-func Discover(config Config_t) {
+func DiscoverCli(config Config_t) {
     deviceList := make(map[string]map[string]string)
     ctx := context.Background()
     api, _ := wemo.NewByInterface(config.EthDevice)
@@ -36,4 +36,20 @@ func Discover(config Config_t) {
             panic(err)
         }
     }
+}
+
+
+
+func Discover(config Config_t) map[string]map[string]string {
+    deviceList := make(map[string]map[string]string)
+    ctx := context.Background()
+    api, _ := wemo.NewByInterface(config.EthDevice)
+    devs, _ := api.DiscoverAll(time.Duration(config.DiscoveryTimeout)*time.Second)
+
+    for _, device := range devs {
+        deviceInfo, _ := device.FetchDeviceInfo(ctx)
+        deviceList[deviceInfo.FriendlyName] = map[string]string{"ip_port": device.Host}
+    }
+
+    return deviceList
 }

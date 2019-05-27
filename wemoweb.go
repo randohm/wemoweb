@@ -3,7 +3,6 @@ package main
 import (
      "./include"
      "log"
-     //"fmt"
      "os"
 )
 
@@ -14,11 +13,10 @@ func main() {
     if err != nil {
         log.Fatal(err)
     }
-    //fmt.Printf("%+v\n", config)
 
     if len(os.Args) > 1 {
         if os.Args[1] == "discover" {
-            wemoweb.Discover(config)
+            wemoweb.DiscoverCli(config)
         } else if os.Args[1] == "server" {
             wemoweb.StartHttp(config)
         } else {
