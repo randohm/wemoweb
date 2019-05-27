@@ -52,9 +52,7 @@ func UpdateDevices(config Config_t, deviceList, newDevices map[string]map[string
             log.Printf("Found updated device: %s old:%s new: %s\n", k, deviceList[k], v)
             deviceList[k]["ip_port"] = v["ip_port"]
             changed = true
-        } /*else {
-            log.Printf("Found matching device: %s old:%s new: %s\n", k, deviceList[k], v)
-        }//*/
+        }
     }
     return changed
 }
