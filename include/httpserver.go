@@ -34,7 +34,11 @@ func ReadUsers() (map[string]string, error) {
 
 
 func HttpLog(r *http.Request, status int) {
-    log.Printf("%s %d %s %s %s (%s)", r.RemoteAddr, status, r.Method, r.URL, r.Proto, r.UserAgent())
+    user, _, _ := r.BasicAuth()
+    if user == "" {
+        user = "-"
+    }
+    log.Printf("%s %s %d %s %s %s (%s)", r.RemoteAddr, user, status, r.Method, r.URL, r.Proto, r.UserAgent())
     //log.Printf("%+v\n", r)
 }
 
@@ -165,11 +169,14 @@ func discoverHandler(w http.ResponseWriter, r *http.Request) {
         log.Printf("Error: %s\n", err)
         return
     }
-    newDevices := Discover(config_g)
-    //fmt.Fprintf(w, "%+v\n", devices)
+    newDevices, err := Discover(config_g)
+    if err != nil {
+        HttpLog(r, 500)
+        log.Printf("Error: %s\n", err)
+        return
+    }
     if UpdateDevices(config_g, devices, newDevices) {
         log.Println("Device refresh needed, writing out to file")
-        //*
         err = WriteDevices(config_g, devices)
         if err != nil {
             HttpLog(r, 500)
@@ -177,7 +184,6 @@ func discoverHandler(w http.ResponseWriter, r *http.Request) {
             return
         }
         message = "Device(s) updated"
-        //*/
     }
 
     tmpl, _ := template.ParseFiles(config_g.HtmlTemplate)

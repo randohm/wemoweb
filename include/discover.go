@@ -11,23 +11,23 @@ import (
 )
 
 func DiscoverCli(config Config_t) {
-    deviceList := make(map[string]map[string]string)
-    ctx := context.Background()
-    api, _ := wemo.NewByInterface(config.EthDevice)
-    devs, _ := api.DiscoverAll(time.Duration(config.DiscoveryTimeout)*time.Second)
+    deviceList, err := Discover(config)
+    if err != nil {
+        panic(err)
+    }
 
-    fmt.Println("Discovering devices")
     i := 1
-    for _, device := range devs {
-        deviceInfo, _ := device.FetchDeviceInfo(ctx)
-        fmt.Printf("%2d Found %s %s\n", i, device.Host, deviceInfo.FriendlyName)
-        deviceList[deviceInfo.FriendlyName] = map[string]string{"ip_port": device.Host}
+    for k, v := range deviceList {
+        fmt.Printf("%2d Found %s %s\n", i, v["ip_port"], k)
         i++
     }
 
     fmt.Print("Save to file? (y/n)[n] ")
     reader := bufio.NewReader(os.Stdin)
-    readIn, _ := reader.ReadString('\n')
+    readIn, err := reader.ReadString('\n')
+    if err != nil {
+        panic(err)
+    }
     readIn = strings.TrimSuffix(readIn, "\n")
     if readIn == "y" {
         fmt.Printf("Saving to file '%s'\n", config.DevicesFile)
@@ -40,16 +40,22 @@ func DiscoverCli(config Config_t) {
 
 
 
-func Discover(config Config_t) map[string]map[string]string {
+func Discover(config Config_t) (map[string]map[string]string, error) {
     deviceList := make(map[string]map[string]string)
     ctx := context.Background()
-    api, _ := wemo.NewByInterface(config.EthDevice)
-    devs, _ := api.DiscoverAll(time.Duration(config.DiscoveryTimeout)*time.Second)
+    api, err := wemo.NewByInterface(config.EthDevice)
+    if err != nil {
+        return map[string]map[string]string{}, err
+    }
+    devs, err := api.DiscoverAll(time.Duration(config.DiscoveryTimeout)*time.Second)
+    if err != nil {
+        return map[string]map[string]string{}, err
+    }
 
     for _, device := range devs {
         deviceInfo, _ := device.FetchDeviceInfo(ctx)
         deviceList[deviceInfo.FriendlyName] = map[string]string{"ip_port": device.Host}
     }
 
-    return deviceList
+    return deviceList, nil
 }

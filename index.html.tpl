@@ -95,7 +95,7 @@ button.action_button {
 {{end -}}
 </tbody>
 </table>
-<p><a href="/">Refresh</a></p>
+<p><a href="/">{{ if (eq .Mode "main") -}}Refresh{{else -}}Main Page{{end -}}</a></p>
 
 <p><a href="/discover">Discover</a></p>
 
