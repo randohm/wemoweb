@@ -3,17 +3,8 @@ package wemoweb
 import (
     "io/ioutil"
     "encoding/json"
-    //"fmt"
     "log"
 )
-
-
-
-type WemoDevice struct {
-    Name string `json:"name"`
-    IP string `json:"ip"`
-    Port int `json:"port"`
-}
 
 
 
