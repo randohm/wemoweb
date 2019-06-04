@@ -1,8 +1,31 @@
 # wemoweb
-Web interface for to control Wemo devices.
+A simple web interface to control Wemo® devices.
 Work still in progress.
+This is done with the goal of being used on mobile device web browsers, as well as larger devices.
 
-## Installation
+
+This may not work for everyone.
+I keep my devices' IPs static and that makes it easier and require fewer discoveries.
+It should work if the devices do not change IPs often.
+
+## Compiling
+No Makefile yet.
+Just run: `go build wemoweb.go`
+
+## Use
+
+### Discovery
+
+Run: `./wemoweb discover`
+
+It will scan and prompt to save a devices.json file.
+
+### Webserver
+
+Run: `/.wemoweb server`
+
+
+## Application Installation
 Create `config.json` out of `sample.config.json`.
 
 **Config File Sample**  
@@ -39,3 +62,17 @@ Format:
     "username": "MD5 sum of password"
 }
 ```
+
+### Devices File
+Format:
+```
+{
+  "Device 1": {
+    "ip_port": "192.168.0.10:49153"
+  },
+  "Device 2": {
+    "ip_port": "192.168.0.11:49153"
+  }
+}
+```
+

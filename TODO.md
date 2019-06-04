@@ -1,5 +1,6 @@
 # TODO
 - [ ] Create Makefile and set up like a Go project.
+- [ ] Pass config file path to override default.
 - [x] Create timer. eg. set off time to X minutes from now.
 - [x] log username
 - [x] fix DiscoverCli() to use Discover()
