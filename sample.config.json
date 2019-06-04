@@ -1,0 +1,11 @@
+{
+  "http_port": 8080,
+  "eth_device": "eth0",
+  "devices_file": "devices.json",
+  "discovery_timeout": 5,
+  "html_tmpl": "index.html.tpl",
+  "users_file": "users.json",
+  "use_tls": true,
+  "tls_cert_file": "cert.pem",
+  "tls_key_file": "key.pem"
+}
