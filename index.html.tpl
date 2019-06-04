@@ -36,10 +36,18 @@ td.device_td {
   padding: 5px;
 }
 
+td.device_td_name {
+  padding: 5px;
+  width: 60%
+}
+
 button.action_button {
   font-size: 18px;
 }
 
+button.timer_button {
+  font-size: 12px;
+}
 
 
 @media only screen and (max-width: 1080px) {
@@ -66,6 +74,10 @@ button.action_button {
     font-size: 6vw;
   }
 
+  button.timer_button {
+    font-size: 3vw;
+  }
+
 }
 -->
   </style>
@@ -75,13 +87,21 @@ button.action_button {
 
 <table class="device_table">
 <tbody>
-{{ if (eq .Mode "main") -}}
-<tr><th>Device</th><th>On/Off</th></tr>
+{{if (eq .Mode "main") -}}
+<tr><th>Device</th><!--th>On/Off</th><th>Timer</th--></tr>
 {{range $key, $value := .DeviceData -}}
 <tr class="{{if eq $value.state "1"}}device_tr_active{{else}}device_tr_inactive{{end}}">
-    <td class="device_td">{{$key}}</td>
+    <td class="device_td_name">{{$key}}</td>
     <td class="device_td">
         <button class="action_button" OnClick="window.location.href='/?op={{if eq $value.state "1"}}off{{else}}on{{end}}&dev={{$key}}'">{{if eq $value.state "1"}}Off{{else}}On{{end}}</button>
+    </td>
+    <td class="device_td">
+        {{if eq $value.state "0" -}}
+        <button class="timer_button" OnClick="window.location.href='/?op=timer&len=5&dev={{$key}}'">5</button>
+        <button class="timer_button" OnClick="window.location.href='/?op=timer&len=10&dev={{$key}}'">10</button>
+        <button class="timer_button" OnClick="window.location.href='/?op=timer&len=15&dev={{$key}}'">15</button>
+        <button class="timer_button" OnClick="window.location.href='/?op=timer&len=30&dev={{$key}}'">30</button>
+        {{end -}}
     </td>
 </tr>
 {{end -}}

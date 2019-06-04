@@ -10,6 +10,8 @@ import (
     //"golang.org/x/net/context"
     "io/ioutil"
     "encoding/json"
+    "strconv"
+    "time"
 )
 
 
@@ -123,6 +125,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
     }
     op, _ := r.URL.Query()["op"]
     dev, _ := r.URL.Query()["dev"]
+    length, _ := r.URL.Query()["len"]
     if len(op) > 0 && len(dev) > 0 {
         device := &wemo.Device{Host:devices[dev[0]]["ip_port"]}
         switch op[0] {
@@ -142,6 +145,23 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
                 } else {
                     message = fmt.Sprintf("Turned off %s", dev[0])
                 }
+            case "timer":
+                if len(length) > 0 {
+                    log.Printf("Turning on %s for %s minutes\n", dev[0], length[0])
+                    minutes, _ := strconv.Atoi(length[0])
+                    err = device.On()
+                    if err != nil {
+                        message = fmt.Sprintf("Could not turn on %s: %s", dev[0], err)
+                    } else {
+                        message = fmt.Sprintf("Turned on %s", dev[0])
+                    }
+                    go timerOff(device, minutes)
+                    message = fmt.Sprintf("Set timer on %s for %s minutes", dev[0], length[0])
+                } else {
+                    HttpLog(r, 500)
+                    log.Println("Length not specified")
+                    return
+                }
         }
     }
     err = GenerateRootPage(w, devices, message)
@@ -152,6 +172,19 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
     }
 
     HttpLog(r, 200)
+}
+
+
+
+func timerOff(device *wemo.Device, minutes int) {
+    log.Printf("Setting timer for %d minutes\n", minutes)
+    time.Sleep(time.Duration(minutes) * time.Minute)
+    err := device.Off()
+    if err != nil {
+        log.Printf("Error turning off after sleep: %s\n", err)
+        return
+    }
+    log.Printf("Turned off after %d minutes", minutes)
 }
 
 
