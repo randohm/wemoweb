@@ -15,7 +15,7 @@ body {
 table.device_table {
   border-spacing: 0px;
   font-size: 20px;
-  border: 0px;
+  border: 0px solid black;
   padding: 0px;
   width: 500px;
 }
@@ -32,13 +32,15 @@ tr.discover_tr {
   background: #cccccc
 }
 
-td.device_td {
-  padding: 5px;
-}
-
 td.device_td_name {
   padding: 5px;
-  width: 60%
+  width: 60%;
+  text-align: left;
+}
+
+td.device_td_button {
+  padding: 5px;
+  text-align: right;
 }
 
 button.action_button {
@@ -46,7 +48,12 @@ button.action_button {
 }
 
 button.timer_button {
-  font-size: 12px;
+  font-size: 18px;
+}
+
+input.minute_input {
+  font-size: 16px;
+  size: 2;
 }
 
 
@@ -71,11 +78,16 @@ button.timer_button {
   }
 
   button.action_button {
-    font-size: 6vw;
+    font-size: 5vw;
   }
 
   button.timer_button {
     font-size: 3vw;
+  }
+
+  input.minute_input {
+    font-size: 3vw;
+    size: 2;
   }
 
 }
@@ -88,19 +100,20 @@ button.timer_button {
 <table class="device_table">
 <tbody>
 {{if (eq .Mode "main") -}}
-<tr><th>Device</th><!--th>On/Off</th><th>Timer</th--></tr>
 {{range $key, $value := .DeviceData -}}
 <tr class="{{if eq $value.state "1"}}device_tr_active{{else}}device_tr_inactive{{end}}">
     <td class="device_td_name">{{$key}}</td>
-    <td class="device_td">
+    <td class="device_td_button">
         <button class="action_button" OnClick="window.location.href='/?op={{if eq $value.state "1"}}off{{else}}on{{end}}&dev={{$key}}'">{{if eq $value.state "1"}}Off{{else}}On{{end}}</button>
     </td>
-    <td class="device_td">
+    <td class="device_td_button">
         {{if eq $value.state "0" -}}
-        <button class="timer_button" OnClick="window.location.href='/?op=timer&len=5&dev={{$key}}'">5</button>
-        <button class="timer_button" OnClick="window.location.href='/?op=timer&len=10&dev={{$key}}'">10</button>
-        <button class="timer_button" OnClick="window.location.href='/?op=timer&len=15&dev={{$key}}'">15</button>
-        <button class="timer_button" OnClick="window.location.href='/?op=timer&len=30&dev={{$key}}'">30</button>
+        <form>
+        <input type="hidden" name="op" value="timer"/>
+        <input type="hidden" name="dev" value="{{$key}}"/>
+        <input type="text" class="minute_input" value="15" size="2" maxlength="2" name="len"/>
+        <button class="timer_button" OnClick="form.submit()">T</button>
+        </form>
         {{end -}}
     </td>
 </tr>
