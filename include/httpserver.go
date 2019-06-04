@@ -177,14 +177,15 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
 
 
 func timerOff(device *wemo.Device, minutes int) {
-    log.Printf("Setting timer for %d minutes\n", minutes)
-    time.Sleep(time.Duration(minutes) * time.Minute)
+    sleepTime := time.Duration(minutes) * time.Minute
+    log.Printf("Setting timer for %+v\n", sleepTime)
+    time.Sleep(sleepTime)
     err := device.Off()
     if err != nil {
         log.Printf("Error turning off after sleep: %s\n", err)
         return
     }
-    log.Printf("Turned off after %d minutes", minutes)
+    log.Printf("Turned off after %+v", sleepTime)
 }
 
 
