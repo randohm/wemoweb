@@ -13,23 +13,24 @@ body {
 }
 
 table.device_table {
-  border-spacing: 0px;
+  border-spacing: 0px 1px;
   font-size: 20px;
   border: 0px solid black;
-  padding: 0px;
+  padding: 0px 0px 0px 0px;
   width: 500px;
 }
 
 tr.device_tr_active {
-  background: #00aa00
+  background: #00aa00;
+  border-spacing: 1px 0px;
 }
 
 tr.device_tr_inactive {
-  background: #aaaaaa
+  background: #aaaaaa;
 }
 
 tr.discover_tr {
-  background: #cccccc
+  background: #cccccc;
 }
 
 td.device_td_name {
