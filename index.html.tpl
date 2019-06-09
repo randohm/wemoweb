@@ -133,7 +133,7 @@ input.minute_input {
 <tr class="discover_tr">
     <td class="device_td">{{$key}}</td><td class="device_td">{{$value.ip_port}}</td>
 </tr>
-  {- {end}}
+  {{- end}}
 {{end -}}
 </tbody>
 </table>
