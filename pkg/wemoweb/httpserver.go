@@ -6,7 +6,7 @@ import (
     "log"
     "fmt"
     "crypto/md5"
-    "github.com/srandawa/go.wemo"
+    "github.com/randohm/go.wemo"
     //"golang.org/x/net/context"
     "io/ioutil"
     "encoding/json"

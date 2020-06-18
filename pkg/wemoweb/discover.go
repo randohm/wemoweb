@@ -2,7 +2,7 @@ package wemoweb
 
 import (
     "fmt"
-    "github.com/srandawa/go.wemo"
+    "github.com/randohm/go.wemo"
     "golang.org/x/net/context"
     "os"
     "time"
