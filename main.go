@@ -1,9 +1,9 @@
 package main
 
 import (
-     "./include"
-     "log"
-     "os"
+    "wemoweb/pkg/wemoweb"
+    "log"
+    "os"
 )
 
 
