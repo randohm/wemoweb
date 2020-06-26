@@ -6,7 +6,7 @@ import (
 )
 
 const (
-    configFile = "./config.json"
+    defaultConfigFile = "./config.json"
 )
 
 
@@ -25,7 +25,7 @@ type Config_t struct {
 
 
 
-func ReadConfig() (Config_t, error){
+func ReadConfig(configFile string) (Config_t, error){
     configJson, err := ioutil.ReadFile(configFile)
     if err != nil {
         return Config_t{}, err

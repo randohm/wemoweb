@@ -9,8 +9,8 @@ I keep my devices' IPs static and that makes it easier and require fewer discove
 It should work if the devices do not change IPs often.
 
 ## Compiling
-No Makefile yet.
-Just run: `go build wemoweb.go`
+No Makefile.
+Just run: `go build`
 
 ## Use
 

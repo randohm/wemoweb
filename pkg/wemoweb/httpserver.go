@@ -7,7 +7,6 @@ import (
     "fmt"
     "crypto/md5"
     "github.com/randohm/go.wemo"
-    //"golang.org/x/net/context"
     "io/ioutil"
     "encoding/json"
     "strconv"
@@ -79,16 +78,12 @@ func CheckHttpAuth(w http.ResponseWriter, r *http.Request) bool {
 
 
 func GenerateRootPage(w http.ResponseWriter, devices map[string]map[string]string, message string) error {
-    //ctx := context.Background()
-
-    for k, v := range devices {
-        d := &wemo.Device{Host:v["ip_port"]}
-        //device_info, _ := d.FetchDeviceInfo(ctx)
-        //devices[k]["info"] = fmt.Sprintf("%+v", device_info)
-        devices[k]["state"] = fmt.Sprintf("%d", d.GetBinaryState())
+    for _, v := range devices {
+        d := &wemo.Device{Host:v["Host"]}
+        v["state"] = fmt.Sprintf("%d", d.GetBinaryState())
     }
 
-    tmpl, _ := template.ParseFiles(config_g.HtmlTemplate)
+    tmpl, _ := template.ParseFiles(config_g.HtmlTemplate) // TODO: check for file first
     httpData := struct {
         Mode string
         DeviceData map[string]map[string]string
@@ -127,10 +122,10 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
     dev, _ := r.URL.Query()["dev"]
     length, _ := r.URL.Query()["len"]
     if len(op) > 0 && len(dev) > 0 {
-        device := &wemo.Device{Host:devices[dev[0]]["ip_port"]}
+        device := &wemo.Device{Host:devices[dev[0]]["Host"]}
         switch op[0] {
             case "on":
-                log.Printf("Turning on %s\n", dev[0])
+                log.Printf("Turning on %s\n", devices[dev[0]]["FriendlyName"])
                 err = device.On()
                 if err != nil {
                     message = fmt.Sprintf("Could not turn on %s: %s", dev[0], err)
@@ -220,7 +215,7 @@ func discoverHandler(w http.ResponseWriter, r *http.Request) {
         message = "Device(s) updated"
     }
 
-    tmpl, _ := template.ParseFiles(config_g.HtmlTemplate)
+    tmpl, _ := template.ParseFiles(config_g.HtmlTemplate) // TODO: check for file first
     httpData := struct {
         Mode string
         DeviceData map[string]map[string]string
@@ -244,12 +239,182 @@ func discoverHandler(w http.ResponseWriter, r *http.Request) {
 
 
 
+func apiListHandler(w http.ResponseWriter, r *http.Request) {
+    devices, err := ReadDevices(config_g)
+    if err != nil {
+        log.Println(err)
+        return
+    }
+    jsonOut, err := json.Marshal(devices)
+    if err != nil {
+        HttpLog(r, 500)
+        return
+    }
+
+    w.Write([]byte(jsonOut))
+}
+
+
+
+func apiStatusHandler(w http.ResponseWriter, r *http.Request) {
+    devices, err := ReadDevices(config_g)
+    if err != nil {
+        log.Println(err)
+        return
+    }
+
+    rbody, err := ioutil.ReadAll(r.Body)
+    if err != nil {
+        log.Printf("ERROR: %s", err)
+        HttpLog(r, 500)
+        return
+    }
+
+    var reqData map[string]string
+    err = json.Unmarshal(rbody, &reqData)
+    if err != nil {
+        log.Printf("ERROR: %s", err)
+        HttpLog(r, 500)
+        return
+    }
+
+    device := &wemo.Device{Host:devices[reqData["MacAddress"]]["Host"]}
+    state := device.GetBinaryState()
+    w.Write([]byte(fmt.Sprintf("%d", state)))
+    HttpLog(r, 200)
+}
+
+
+
+func apiDiscoverHandler(w http.ResponseWriter, r *http.Request) {
+    devices, err := ReadDevices(config_g)
+    if err != nil {
+        HttpLog(r, 500)
+        log.Printf("Error: %s\n", err)
+        return
+    }
+    newDevices, err := Discover(config_g)
+    if err != nil {
+        HttpLog(r, 500)
+        log.Printf("Error: %s\n", err)
+        return
+    }
+    if UpdateDevices(config_g, devices, newDevices) {
+        log.Println("Device refresh needed, writing out to file")
+        err = WriteDevices(config_g, devices)
+        if err != nil {
+            HttpLog(r, 500)
+            log.Printf("Error: %s\n", err)
+            return
+        }
+        w.Write([]byte("1"))
+    } else {
+        w.Write([]byte("0"))
+    }
+
+    HttpLog(r, 200)
+}
+
+
+
+func apiOnHandler(w http.ResponseWriter, r *http.Request) {
+    devices, err := ReadDevices(config_g)
+    if err != nil {
+        log.Println(err)
+        return
+    }
+
+    rbody, err := ioutil.ReadAll(r.Body)
+    if err != nil {
+        log.Printf("ERROR: %s", err)
+        HttpLog(r, 500)
+        return
+    }
+
+    var reqData map[string]string
+    err = json.Unmarshal(rbody, &reqData)
+    if err != nil {
+        log.Printf("ERROR: %s", err)
+        HttpLog(r, 500)
+        return
+    }
+
+    device := &wemo.Device{Host:devices[reqData["MacAddress"]]["Host"]}
+    err = device.On()
+    if err != nil {
+        log.Printf("Could not turn on %s: %s", reqData["MacAddress"], err)
+    } else {
+        log.Printf("Turned on %s", reqData["MacAddress"])
+    }
+
+    HttpLog(r, 200)
+}
+
+
+
+func apiOffHandler(w http.ResponseWriter, r *http.Request) {
+    devices, err := ReadDevices(config_g)
+    if err != nil {
+        log.Println(err)
+        return
+    }
+
+    rbody, err := ioutil.ReadAll(r.Body)
+    if err != nil {
+        log.Printf("ERROR: %s", err)
+        HttpLog(r, 500)
+        return
+    }
+
+    var reqData map[string]string
+    err = json.Unmarshal(rbody, &reqData)
+    if err != nil {
+        log.Printf("ERROR: %s", err)
+        HttpLog(r, 500)
+        return
+    }
+
+    device := &wemo.Device{Host:devices[reqData["MacAddress"]]["Host"]}
+    err = device.Off()
+    if err != nil {
+        log.Printf("Could not turn off %s: %s", reqData["MacAddress"], err)
+    } else {
+        log.Printf("Turned off %s", reqData["MacAddress"])
+    }
+
+    HttpLog(r, 200)
+}
+
+
+
+func apiScheduleHandler(w http.ResponseWriter, r *http.Request) {
+}
+
+
+
+func apiHandler(w http.ResponseWriter, r *http.Request) {
+}
+
+
+
 func StartHttp (config Config_t) {
     config_g = config
     log.Printf("Starting webserver on port %d\n", config.HttpPort)
+
+    // Web UI handlers
     http.HandleFunc("/", httpHandler)
     http.HandleFunc("/favicon.ico", iconHandler)
     http.HandleFunc("/discover", discoverHandler)
+
+    // API handlers
+    http.HandleFunc("/api/list", apiListHandler)
+    http.HandleFunc("/api/status", apiStatusHandler)
+    http.HandleFunc("/api/discover", apiDiscoverHandler)
+    http.HandleFunc("/api/on", apiOnHandler)
+    http.HandleFunc("/api/off", apiOffHandler)
+    http.HandleFunc("/api/schedule", apiScheduleHandler)
+
+
     portStr := fmt.Sprintf(":%d", config.HttpPort)
     if config.UseTls == true {
         http.ListenAndServeTLS(portStr, config.TlsCertFile, config.TlsKeyFile, nil)

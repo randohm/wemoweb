@@ -109,7 +109,7 @@ input.minute_input {
 {{if (eq .Mode "main") -}}
   {{- range $key, $value := .DeviceData}}
 <tr class="{{if eq $value.state "1"}}device_tr_active{{else}}device_tr_inactive{{end}}">
-    <td class="device_td_name">{{$key}}</td>
+    <td class="device_td_name">{{$value.FriendlyName}}</td>
     {{- if not (eq $value.state "-1")}}
     <td class="device_td_button">
         <button class="action_button" OnClick="window.location.href='/?op={{if eq $value.state "1"}}off{{else}}on{{end}}&dev={{$key}}'">{{if eq $value.state "1"}}Off{{else}}On{{end}}</button>
@@ -131,7 +131,7 @@ input.minute_input {
 <tr><th>Discovered Device</th><th>IP:port</th></tr>
   {{- range $key, $value := .DeviceData }}
 <tr class="discover_tr">
-    <td class="device_td">{{$key}}</td><td class="device_td">{{$value.ip_port}}</td>
+    <td class="device_td">{{$value.FriendlyName}}</td><td class="device_td">{{$value.Host}}</td>
 </tr>
   {{- end}}
 {{end -}}

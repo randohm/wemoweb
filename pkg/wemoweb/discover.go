@@ -17,8 +17,9 @@ func DiscoverCli(config Config_t) {
     }
 
     i := 1
-    for k, v := range deviceList {
-        fmt.Printf("%2d Found %s %s\n", i, v["ip_port"], k)
+    for _, v := range deviceList {
+        fmt.Printf("%2d Found %s %s\n", i, v["Host"], v["FriendlyName"])
+        //fmt.Printf("    %+v\n", v)
         i++
     }
 
@@ -54,7 +55,8 @@ func Discover(config Config_t) (map[string]map[string]string, error) {
 
     for _, device := range devs {
         deviceInfo, _ := device.FetchDeviceInfo(ctx)
-        deviceList[deviceInfo.FriendlyName] = map[string]string{"ip_port": device.Host}
+        //fmt.Printf("%+v\n    %+v\n", device, deviceInfo)
+        deviceList[deviceInfo.MacAddress] = map[string]string{"Host": device.Host, "FriendlyName": deviceInfo.FriendlyName, "DeviceType": deviceInfo.DeviceType, "SerialNumber": deviceInfo.SerialNumber}
     }
 
     return deviceList, nil

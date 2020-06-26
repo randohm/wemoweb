@@ -2,32 +2,32 @@ package wemoweb
 
 import (
     "io/ioutil"
-    "encoding/json"
+    "gopkg.in/yaml.v2"
     "log"
 )
 
 
 
 func ReadDevices(config Config_t) (map[string]map[string]string, error) {
-    devicesJson, err := ioutil.ReadFile(config.DevicesFile)
+    devicesYaml, err := ioutil.ReadFile(config.DevicesFile)
     if err != nil {
         return map[string]map[string]string{}, err
     }
 
     var deviceList map[string]map[string]string
-    err = json.Unmarshal(devicesJson, &deviceList)
+    err = yaml.Unmarshal(devicesYaml, &deviceList)
     return deviceList, nil
 }
 
 
 
 func WriteDevices(config Config_t, deviceList map[string]map[string]string) error {
-    jsonOut, err := json.Marshal(deviceList)
+    yamlOut, err := yaml.Marshal(deviceList)
     if err != nil {
         return err
     }
 
-    err = ioutil.WriteFile(config.DevicesFile, jsonOut, 0644)
+    err = ioutil.WriteFile(config.DevicesFile, yamlOut, 0644)
     if err != nil {
         return err
     }
@@ -41,11 +41,12 @@ func UpdateDevices(config Config_t, deviceList, newDevices map[string]map[string
     for k, v := range newDevices {
         _, ok := deviceList[k]
         if !ok {
-            deviceList[k] = map[string]string{"ip_port": v["ip_port"]}
+            deviceList[k] = map[string]string{"Host": v["Host"]}
             changed = true
-        } else if v["ip_port"] != deviceList[k]["ip_port"] {
+        } else if v["Host"] != deviceList[k]["Host"] {
             log.Printf("Found updated device: %s old:%s new: %s\n", k, deviceList[k], v)
-            deviceList[k]["ip_port"] = v["ip_port"]
+            //deviceList[k]["Host"] = v["Host"]
+            deviceList[k] = v
             changed = true
         }
     }

@@ -7,4 +7,5 @@ require (
 	github.com/savaki/httpctx v0.0.0-20150513232136-dc87db79c5f8 // indirect
 	github.com/smartystreets/goconvey v1.6.4 // indirect
 	golang.org/x/net v0.0.0-20200602114024-627f9648deb9
+	gopkg.in/yaml.v2 v2.3.0
 )
