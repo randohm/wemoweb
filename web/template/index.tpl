@@ -112,7 +112,7 @@ input.minute_input {
     <td class="device_td_name">{{$value.FriendlyName}}</td>
     {{- if not (eq $value.state "-1")}}
     <td class="device_td_button">
-        <button class="action_button" OnClick="window.location.href='/?op={{if eq $value.state "1"}}off{{else}}on{{end}}&dev={{$key}}'">{{if eq $value.state "1"}}Off{{else}}On{{end}}</button>
+        <button class="action_button" OnClick="window.location.href='/ui?op={{if eq $value.state "1"}}off{{else}}on{{end}}&dev={{$key}}'">{{if eq $value.state "1"}}Off{{else}}On{{end}}</button>
     </td>
     <td class="device_td_button">
         <form>
@@ -137,7 +137,7 @@ input.minute_input {
 {{end -}}
 </tbody>
 </table>
-<p><a href="/">{{ if (eq .Mode "main") -}}Refresh{{else -}}Main Page{{end -}}</a></p>
+<p><a href="/ui">{{ if (eq .Mode "main") -}}Refresh{{else -}}Main Page{{end -}}</a></p>
 
 <p><a href="/discover">Discover</a></p>
 
