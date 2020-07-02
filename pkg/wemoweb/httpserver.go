@@ -66,9 +66,7 @@ func CheckUserPass(user, pass string) bool {
 func CheckHttpAuth(w http.ResponseWriter, r *http.Request) bool {
     user, pass, ok := r.BasicAuth()
     if !ok || !CheckUserPass(user, pass) {
-        w.Header().Set("WWW-Authenticate", `Basic realm="nunya"`)
-        w.WriteHeader(401)
-        w.Write([]byte("Unauthorized.\n"))
+        http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
         HttpLog(r, 401)
         return false
     }
@@ -105,7 +103,7 @@ func GenerateRootPage(w http.ResponseWriter, devices map[string]map[string]strin
 
 
 
-func httpHandler(w http.ResponseWriter, r *http.Request) {
+func guiHandler(w http.ResponseWriter, r *http.Request) {
     if config_g.UsersFile != "" {
         if !CheckHttpAuth(w, r) {
             return
@@ -153,6 +151,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
                     go timerOff(device, minutes)
                     message = fmt.Sprintf("Set timer on %s for %s minutes", dev[0], length[0])
                 } else {
+                    http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
                     HttpLog(r, 500)
                     log.Println("Length not specified")
                     return
@@ -161,6 +160,7 @@ func httpHandler(w http.ResponseWriter, r *http.Request) {
     }
     err = GenerateRootPage(w, devices, message)
     if err != nil {
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
         HttpLog(r, 500)
         log.Printf("Error: %s\n", err)
         return
@@ -194,12 +194,14 @@ func discoverHandler(w http.ResponseWriter, r *http.Request) {
     message := "No detected device changes"
     devices, err := ReadDevices(config_g)
     if err != nil {
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
         HttpLog(r, 500)
         log.Printf("Error: %s\n", err)
         return
     }
     newDevices, err := Discover(config_g)
     if err != nil {
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
         HttpLog(r, 500)
         log.Printf("Error: %s\n", err)
         return
@@ -208,6 +210,7 @@ func discoverHandler(w http.ResponseWriter, r *http.Request) {
         log.Println("Device refresh needed, writing out to file")
         err = WriteDevices(config_g, devices)
         if err != nil {
+            http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
             HttpLog(r, 500)
             log.Printf("Error: %s\n", err)
             return
@@ -229,6 +232,7 @@ func discoverHandler(w http.ResponseWriter, r *http.Request) {
 
     err = tmpl.Execute(w, httpData)
     if err != nil {
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
         HttpLog(r, 500)
         log.Printf("Error: %s\n", err)
         return
@@ -247,11 +251,13 @@ func apiListHandler(w http.ResponseWriter, r *http.Request) {
     }
     jsonOut, err := json.Marshal(devices)
     if err != nil {
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
         HttpLog(r, 500)
         return
     }
 
     w.Write([]byte(jsonOut))
+    HttpLog(r, 200)
 }
 
 
@@ -266,6 +272,7 @@ func apiStatusHandler(w http.ResponseWriter, r *http.Request) {
     rbody, err := ioutil.ReadAll(r.Body)
     if err != nil {
         log.Printf("ERROR: %s", err)
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
         HttpLog(r, 500)
         return
     }
@@ -274,6 +281,7 @@ func apiStatusHandler(w http.ResponseWriter, r *http.Request) {
     err = json.Unmarshal(rbody, &reqData)
     if err != nil {
         log.Printf("ERROR: %s", err)
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
         HttpLog(r, 500)
         return
     }
@@ -289,12 +297,14 @@ func apiStatusHandler(w http.ResponseWriter, r *http.Request) {
 func apiDiscoverHandler(w http.ResponseWriter, r *http.Request) {
     devices, err := ReadDevices(config_g)
     if err != nil {
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
         HttpLog(r, 500)
         log.Printf("Error: %s\n", err)
         return
     }
     newDevices, err := Discover(config_g)
     if err != nil {
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
         HttpLog(r, 500)
         log.Printf("Error: %s\n", err)
         return
@@ -303,6 +313,7 @@ func apiDiscoverHandler(w http.ResponseWriter, r *http.Request) {
         log.Println("Device refresh needed, writing out to file")
         err = WriteDevices(config_g, devices)
         if err != nil {
+            http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
             HttpLog(r, 500)
             log.Printf("Error: %s\n", err)
             return
@@ -327,7 +338,9 @@ func apiOnHandler(w http.ResponseWriter, r *http.Request) {
     rbody, err := ioutil.ReadAll(r.Body)
     if err != nil {
         log.Printf("ERROR: %s", err)
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
         HttpLog(r, 500)
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
         return
     }
 
@@ -335,6 +348,7 @@ func apiOnHandler(w http.ResponseWriter, r *http.Request) {
     err = json.Unmarshal(rbody, &reqData)
     if err != nil {
         log.Printf("ERROR: %s", err)
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
         HttpLog(r, 500)
         return
     }
@@ -362,6 +376,7 @@ func apiOffHandler(w http.ResponseWriter, r *http.Request) {
     rbody, err := ioutil.ReadAll(r.Body)
     if err != nil {
         log.Printf("ERROR: %s", err)
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
         HttpLog(r, 500)
         return
     }
@@ -370,6 +385,7 @@ func apiOffHandler(w http.ResponseWriter, r *http.Request) {
     err = json.Unmarshal(rbody, &reqData)
     if err != nil {
         log.Printf("ERROR: %s", err)
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
         HttpLog(r, 500)
         return
     }
@@ -388,6 +404,22 @@ func apiOffHandler(w http.ResponseWriter, r *http.Request) {
 
 
 func apiScheduleHandler(w http.ResponseWriter, r *http.Request) {
+/*
+    devices, err := ReadDevices(config_g)
+    if err != nil {
+        log.Println(err)
+        return
+    }
+
+    rbody, err := ioutil.ReadAll(r.Body)
+    if err != nil {
+        log.Printf("ERROR: %s", err)
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        HttpLog(r, 500)
+        return
+    }
+//*/
+    readSchedule(config_g.ScheduleFile)
 }
 
 
@@ -397,12 +429,19 @@ func apiHandler(w http.ResponseWriter, r *http.Request) {
 
 
 
+func nullPage(w http.ResponseWriter, r *http.Request) {
+}
+
+
+
 func StartHttp (config Config_t) {
     config_g = config
     log.Printf("Starting webserver on port %d\n", config.HttpPort)
 
+    http.HandleFunc("/", nullPage)
+
     // Web UI handlers
-    http.HandleFunc("/", httpHandler)
+    http.HandleFunc("/ui", guiHandler)
     http.HandleFunc("/favicon.ico", iconHandler)
     http.HandleFunc("/discover", discoverHandler)
 
