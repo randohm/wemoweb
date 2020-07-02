@@ -3,7 +3,7 @@ package wemoweb
 import (
     "fmt"
     "github.com/randohm/go.wemo"
-    "golang.org/x/net/context"
+    "context"
     "os"
     "time"
     "bufio"
