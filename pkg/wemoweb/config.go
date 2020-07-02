@@ -2,36 +2,37 @@ package wemoweb
 
 import (
     "io/ioutil"
-    "encoding/json"
+    "gopkg.in/yaml.v2"
 )
 
-const (
-    defaultConfigFile = "./config.json"
-)
+
+
+const defaultConfigFile = "./config.yml"
 
 
 
 type Config_t struct {
-    HttpPort int `json:"http_port"`
-    EthDevice string `json:"eth_device"`
-    DevicesFile string `json:"devices_file"`
-    DiscoveryTimeout int `json:"discovery_timeout"`
-    HtmlTemplate string `json:"html_tmpl"`
-    UsersFile string `json:"users_file"`
-    UseTls bool `json:"use_tls"`
-    TlsCertFile string `json:"tls_cert_file"`
-    TlsKeyFile string `json:"tls_key_file"`
+    HttpPort int `yaml:"HttpPort"`
+    EthDevice string `yaml:"EthDevice"`
+    DevicesFile string `yaml:"DevicesFile"`
+    DiscoveryTimeout int `yaml:"DiscoveryTimeout"`
+    HtmlTemplate string `yaml:"HtmlTemplate"`
+    UsersFile string `yaml:"UsersFile"`
+    UseTls bool `yaml:"UseTls"`
+    TlsCertFile string `yaml:"TlsCertFile"`
+    TlsKeyFile string `yaml:"TlsKeyFile"`
+    ScheduleFile string `yaml:"ScheduleFile"`
 }
 
 
 
-func ReadConfig(configFile string) (Config_t, error){
-    configJson, err := ioutil.ReadFile(configFile)
+func ReadConfig(configFile string) (Config_t, error) {
+    configData, err := ioutil.ReadFile(configFile)
     if err != nil {
         return Config_t{}, err
     }
 
     var config Config_t
-    err = json.Unmarshal(configJson, &config)
+    err = yaml.Unmarshal(configData, &config)
     return config, nil
 }
