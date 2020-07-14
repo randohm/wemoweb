@@ -3,6 +3,7 @@ module wemoweb
 go 1.14
 
 require (
+	github.com/juju/loggo v0.0.0-20200526014432-9ce3a2e09b5e
 	github.com/randohm/go.wemo v0.0.0-20190524055743-f78eae3157b5
 	github.com/savaki/httpctx v0.0.0-20150513232136-dc87db79c5f8 // indirect
 	github.com/smartystreets/goconvey v1.6.4 // indirect

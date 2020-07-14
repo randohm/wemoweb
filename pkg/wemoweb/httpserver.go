@@ -3,53 +3,66 @@ package wemoweb
 import (
     "net/http"
     "html/template"
-    "log"
+    golog "log"
     "fmt"
     "crypto/md5"
     "github.com/randohm/go.wemo"
     "io/ioutil"
     "encoding/json"
+    "gopkg.in/yaml.v2"
     "strconv"
     "time"
+    "os"
+    "sort"
 )
 
 
 
-var config_g Config_t
+var gologger *golog.Logger
 var users map[string]string
 
 
 
-func ReadUsers() (map[string]string, error) {
-    log.Println("Reading in users file")
-    usersJson, err := ioutil.ReadFile(config_g.UsersFile)
+/* Reads users file. 
+   Returns:
+     map with usernames as keys, md5sum of password
+     error
+*/
+func readUsers() (map[string]string, error) {
+    log.Tracef("Reading in users file")
+    usersJson, err := ioutil.ReadFile(config.UsersFile)
     if err != nil {
+        log.Errorf("%s", err)
         return map[string]string{}, err
     }
 
-    var users map[string]string
-    err = json.Unmarshal(usersJson, &users)
-    return users, nil
+    var users map[string]map[string]string
+    err = yaml.Unmarshal(usersJson, &users)
+    if err != nil {
+        log.Errorf("%s", err)
+        return nil, err
+    }
+    return users["users"], nil
 }
 
 
 
-func HttpLog(r *http.Request, status int) {
+func httpLog(r *http.Request, status int) {
     user, _, _ := r.BasicAuth()
     if user == "" {
         user = "-"
     }
-    log.Printf("%s %s %d %s %s %s (%s)", r.RemoteAddr, user, status, r.Method, r.URL, r.Proto, r.UserAgent())
-    //log.Printf("%+v\n", r)
+    gologger.Printf("%s %s %d %s %s %s (%s)", r.RemoteAddr, user, status, r.Method, r.URL, r.Proto, r.UserAgent())
 }
 
 
 
-func CheckUserPass(user, pass string) bool {
+func checkUserPass(user, pass string) bool {
     if users == nil {
         var err error
-        users, err = ReadUsers()
+        users, err = readUsers()
         if err != nil {
+            log.Errorf("%s", err)
             return false
         }
     }
@@ -63,11 +76,11 @@ func CheckUserPass(user, pass string) bool {
 
 
 
-func CheckHttpAuth(w http.ResponseWriter, r *http.Request) bool {
+func checkHttpAuth(w http.ResponseWriter, r *http.Request) bool {
     user, pass, ok := r.BasicAuth()
-    if !ok || !CheckUserPass(user, pass) {
+    if !ok || !checkUserPass(user, pass) {
         http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-        HttpLog(r, 401)
+        httpLog(r, http.StatusUnauthorized)
         return false
     }
     return true
@@ -75,26 +88,36 @@ func CheckHttpAuth(w http.ResponseWriter, r *http.Request) bool {
 
 
 
-func GenerateRootPage(w http.ResponseWriter, devices map[string]map[string]string, message string) error {
-    for _, v := range devices {
+func generateRootPage(w http.ResponseWriter, devices map[string]map[string]string, message string) error {
+    var devicesList []map[string]string
+    for mac, v := range devices {
         d := &wemo.Device{Host:v["Host"]}
         v["state"] = fmt.Sprintf("%d", d.GetBinaryState())
+        devicesList = append(devicesList, map[string]string{ "mac": mac, "FriendlyName": v["FriendlyName"], "state": v["state"] })
+    }
+    sort.Slice(devicesList, func(i, j int) bool { return devicesList[i]["FriendlyName"] < devicesList[j]["FriendlyName"]})
+    log.Tracef("DevicesList: %+v", devicesList)
+
+    _, err := os.Stat(config.HtmlTemplate)
+    if err != nil {
+        log.Errorf("%s", err)
+        return err
     }
 
-    tmpl, _ := template.ParseFiles(config_g.HtmlTemplate) // TODO: check for file first
+    tmpl, _ := template.ParseFiles(config.HtmlTemplate)
     httpData := struct {
         Mode string
-        DeviceData map[string]map[string]string
-        NewDeviceData map[string]map[string]string
+        DeviceData []map[string]string
         Message string
     }{
         Mode: "main",
-        DeviceData: devices,
+        DeviceData: devicesList,
         Message: message,
     }
-    err := tmpl.Execute(w, httpData)
+    log.Tracef("httpData: %+v", httpData)
+    err = tmpl.Execute(w, httpData)
     if err != nil {
-        log.Printf("Error: %s\n", err)
+        log.Errorf("%s", err)
         return err
     }
 
@@ -104,16 +127,16 @@ func GenerateRootPage(w http.ResponseWriter, devices map[string]map[string]strin
 
 
 func guiHandler(w http.ResponseWriter, r *http.Request) {
-    if config_g.UsersFile != "" {
-        if !CheckHttpAuth(w, r) {
+    if config.UsersFile != "" {
+        if !checkHttpAuth(w, r) {
             return
         }
     }
 
     var message string
-    devices, err := ReadDevices(config_g)
+    devices, err := readDevices()
     if err != nil {
-        log.Println(err)
+        log.Errorf("%s", err)
         return
     }
     op, _ := r.URL.Query()["op"]
@@ -123,303 +146,358 @@ func guiHandler(w http.ResponseWriter, r *http.Request) {
         device := &wemo.Device{Host:devices[dev[0]]["Host"]}
         switch op[0] {
             case "on":
-                log.Printf("Turning on %s\n", devices[dev[0]]["FriendlyName"])
+                log.Debugf("Turning on %s", devices[dev[0]]["FriendlyName"])
                 err = device.On()
                 if err != nil {
-                    message = fmt.Sprintf("Could not turn on %s: %s", dev[0], err)
+                    message = fmt.Sprintf("Could not turn on %s: %s", devices[dev[0]]["FriendlyName"], err)
                 } else {
-                    message = fmt.Sprintf("Turned on %s", dev[0])
+                    message = fmt.Sprintf("Turned on %s", devices[dev[0]]["FriendlyName"])
                 }
             case "off":
-                log.Printf("Turning off %s\n", dev[0])
+                log.Debugf("Turning off %s", devices[dev[0]]["FriendlyName"])
                 err = device.Off()
                 if err != nil {
-                    message = fmt.Sprintf("Could not turn off %s: %s", dev[0], err)
+                    message = fmt.Sprintf("Could not turn off %s: %s", devices[dev[0]]["FriendlyName"], err)
                 } else {
-                    message = fmt.Sprintf("Turned off %s", dev[0])
+                    message = fmt.Sprintf("Turned off %s", devices[dev[0]]["FriendlyName"])
                 }
             case "timer":
                 if len(length) > 0 {
-                    log.Printf("Turning on %s for %s minutes\n", dev[0], length[0])
+                    log.Debugf("Turning on %s for %s minutes", devices[dev[0]]["FriendlyName"], length[0])
                     minutes, _ := strconv.Atoi(length[0])
                     err = device.On()
                     if err != nil {
-                        message = fmt.Sprintf("Could not turn on %s: %s", dev[0], err)
+                        message = fmt.Sprintf("Could not turn on %s: %s", devices[dev[0]]["FriendlyName"], err)
                     } else {
-                        message = fmt.Sprintf("Turned on %s", dev[0])
+                        message = fmt.Sprintf("Turned on %s", devices[dev[0]]["FriendlyName"])
                     }
                     go timerOff(device, minutes)
-                    message = fmt.Sprintf("Set timer on %s for %s minutes", dev[0], length[0])
+                    message = fmt.Sprintf("Set timer on %s for %s minutes", devices[dev[0]]["FriendlyName"], length[0])
                 } else {
                     http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-                    HttpLog(r, 500)
-                    log.Println("Length not specified")
+                    httpLog(r, http.StatusInternalServerError)
+                    log.Errorf("Length not specified")
                     return
                 }
         }
     }
-    err = GenerateRootPage(w, devices, message)
+    err = generateRootPage(w, devices, message)
     if err != nil {
         http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        HttpLog(r, 500)
-        log.Printf("Error: %s\n", err)
+        httpLog(r, http.StatusInternalServerError)
+        log.Errorf("%s", err)
         return
     }
 
-    HttpLog(r, 200)
+    httpLog(r, http.StatusOK)
 }
 
 
 
 func timerOff(device *wemo.Device, minutes int) {
     sleepTime := time.Duration(minutes) * time.Minute
-    log.Printf("Setting timer for %+v\n", sleepTime)
+    log.Debugf("Setting timer for %+v", sleepTime)
     time.Sleep(sleepTime)
     err := device.Off()
     if err != nil {
-        log.Printf("Error turning off after sleep: %s\n", err)
+        log.Errorf("Error turning off after sleep: %s", err)
         return
     }
-    log.Printf("Turned off after %+v", sleepTime)
+    log.Debugf("Turned off after %+v", sleepTime)
 }
 
 
 
 func iconHandler(w http.ResponseWriter, r *http.Request) {
+    httpLog(r, http.StatusOK)
 }
 
 
 
 func discoverHandler(w http.ResponseWriter, r *http.Request) {
     message := "No detected device changes"
-    devices, err := ReadDevices(config_g)
+    devices, err := readDevices()
     if err != nil {
         http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        HttpLog(r, 500)
-        log.Printf("Error: %s\n", err)
+        httpLog(r, http.StatusInternalServerError)
+        log.Errorf("%s", err)
         return
     }
-    newDevices, err := Discover(config_g)
+
+    newDevices, err := discover()
     if err != nil {
         http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        HttpLog(r, 500)
-        log.Printf("Error: %s\n", err)
+        httpLog(r, http.StatusInternalServerError)
+        log.Errorf("%s", err)
         return
     }
-    if UpdateDevices(config_g, devices, newDevices) {
-        log.Println("Device refresh needed, writing out to file")
-        err = WriteDevices(config_g, devices)
+    if updateDevices(devices, newDevices) {
+        log.Debugf("Device refresh needed, writing out to file")
+        err = writeDevices(devices)
         if err != nil {
             http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-            HttpLog(r, 500)
-            log.Printf("Error: %s\n", err)
+            httpLog(r, http.StatusInternalServerError)
+            log.Errorf("%s", err)
             return
         }
         message = "Device(s) updated"
     }
 
-    tmpl, _ := template.ParseFiles(config_g.HtmlTemplate) // TODO: check for file first
+    // Create device list sorted by FriendlyName
+    var newDevicesList []map[string]string
+    for _, v := range newDevices {
+        newDevicesList = append(newDevicesList, v)
+    }
+    sort.Slice(newDevicesList, func(i, j int) bool { return newDevicesList[i]["FriendlyName"] < newDevicesList[j]["FriendlyName"]})
+
+    _, err = os.Stat(config.HtmlTemplate)
+    if err != nil {
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        httpLog(r, http.StatusInternalServerError)
+        log.Errorf("%s", err)
+        return
+    }
+    tmpl, _ := template.ParseFiles(config.HtmlTemplate)
     httpData := struct {
         Mode string
-        DeviceData map[string]map[string]string
-        NewDeviceData map[string]map[string]string
+        DeviceData []map[string]string
         Message string
     }{
         Mode: "discover",
-        DeviceData: newDevices,
+        DeviceData: newDevicesList,
         Message: message,
     }
 
     err = tmpl.Execute(w, httpData)
     if err != nil {
         http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        HttpLog(r, 500)
-        log.Printf("Error: %s\n", err)
+        httpLog(r, http.StatusInternalServerError)
+        log.Errorf("%s", err)
         return
     }
 
-    HttpLog(r, 200)
+    httpLog(r, http.StatusOK)
 }
 
 
 
 func apiListHandler(w http.ResponseWriter, r *http.Request) {
-    devices, err := ReadDevices(config_g)
+    devices, err := readDevices()
     if err != nil {
-        log.Println(err)
-        return
-    }
-    jsonOut, err := json.Marshal(devices)
-    if err != nil {
+        log.Errorf("%s", err)
         http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        HttpLog(r, 500)
+        httpLog(r, http.StatusInternalServerError)
         return
     }
 
+    jsonOut, err := json.Marshal(devices)
+    if err != nil {
+        log.Errorf("%s", err)
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        httpLog(r, http.StatusInternalServerError)
+        return
+    }
+    log.Tracef("Devices Json: %s", jsonOut)
+
     w.Write([]byte(jsonOut))
-    HttpLog(r, 200)
+    httpLog(r, http.StatusOK)
 }
 
 
 
 func apiStatusHandler(w http.ResponseWriter, r *http.Request) {
-    devices, err := ReadDevices(config_g)
+    devices, err := readDevices()
     if err != nil {
-        log.Println(err)
+        log.Errorf("%s", err)
         return
     }
 
     rbody, err := ioutil.ReadAll(r.Body)
     if err != nil {
-        log.Printf("ERROR: %s", err)
+        log.Errorf("%s", err)
         http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        HttpLog(r, 500)
+        httpLog(r, http.StatusInternalServerError)
+        return
+    }
+    log.Tracef("Request Body: '%s'", rbody)
+
+    if len(rbody) == 0 {
+        log.Debugf("Empty request body")
+        http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+        httpLog(r, http.StatusBadRequest)
         return
     }
 
     var reqData map[string]string
     err = json.Unmarshal(rbody, &reqData)
     if err != nil {
-        log.Printf("ERROR: %s", err)
+        log.Errorf("%s", err)
         http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        HttpLog(r, 500)
+        httpLog(r, http.StatusInternalServerError)
         return
     }
+    log.Tracef("Request Json: %+v", reqData)
 
     device := &wemo.Device{Host:devices[reqData["MacAddress"]]["Host"]}
-    state := device.GetBinaryState()
-    w.Write([]byte(fmt.Sprintf("%d", state)))
-    HttpLog(r, 200)
+    state := "off"
+    if device.GetBinaryState() == 1 {
+        state = "on"
+    }
+    outData := map[string]string{"state": state}
+    jsonOut, err := json.Marshal(outData)
+    if err != nil {
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        httpLog(r, http.StatusInternalServerError)
+        return
+    }
+    w.Write([]byte(jsonOut))
+    httpLog(r, http.StatusOK)
 }
 
 
 
 func apiDiscoverHandler(w http.ResponseWriter, r *http.Request) {
-    devices, err := ReadDevices(config_g)
+    devices, err := readDevices()
     if err != nil {
         http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        HttpLog(r, 500)
-        log.Printf("Error: %s\n", err)
+        httpLog(r, http.StatusInternalServerError)
+        log.Errorf("%s", err)
         return
-    }
-    newDevices, err := Discover(config_g)
-    if err != nil {
-        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        HttpLog(r, 500)
-        log.Printf("Error: %s\n", err)
-        return
-    }
-    if UpdateDevices(config_g, devices, newDevices) {
-        log.Println("Device refresh needed, writing out to file")
-        err = WriteDevices(config_g, devices)
-        if err != nil {
-            http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-            HttpLog(r, 500)
-            log.Printf("Error: %s\n", err)
-            return
-        }
-        w.Write([]byte("1"))
-    } else {
-        w.Write([]byte("0"))
     }
 
-    HttpLog(r, 200)
+    newDevices, err := discover()
+    if err != nil {
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        httpLog(r, http.StatusInternalServerError)
+        log.Errorf("%s", err)
+        return
+    }
+    log.Tracef("Discovered devices: %+v", newDevices)
+
+    devicesUpdated := updateDevices(devices, newDevices)
+    if devicesUpdated {
+        log.Debugf("Device refresh needed, writing out to file")
+        err = writeDevices(devices)
+        if err != nil {
+            http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+            httpLog(r, http.StatusInternalServerError)
+            log.Errorf("%s", err)
+            return
+        }
+    } else {
+        log.Debugf("No device changes found")
+    }
+
+    outData := map[string]bool{"updated": devicesUpdated}
+    jsonOut, err := json.Marshal(outData)
+    if err != nil {
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        httpLog(r, http.StatusInternalServerError)
+        return
+    }
+    w.Write([]byte(jsonOut))
+    httpLog(r, http.StatusOK)
 }
 
 
 
 func apiOnHandler(w http.ResponseWriter, r *http.Request) {
-    devices, err := ReadDevices(config_g)
+    devices, err := readDevices()
     if err != nil {
-        log.Println(err)
+        log.Errorf("%s", err)
         return
     }
 
     rbody, err := ioutil.ReadAll(r.Body)
     if err != nil {
-        log.Printf("ERROR: %s", err)
+        log.Errorf("%s", err)
         http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        HttpLog(r, 500)
+        httpLog(r, http.StatusInternalServerError)
         http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
         return
     }
+    log.Tracef("Request Body: '%s'", rbody)
 
     var reqData map[string]string
     err = json.Unmarshal(rbody, &reqData)
     if err != nil {
-        log.Printf("ERROR: %s", err)
+        log.Errorf("%s", err)
         http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        HttpLog(r, 500)
+        httpLog(r, http.StatusInternalServerError)
         return
     }
+    log.Tracef("Request Json: %+v", reqData)
 
     device := &wemo.Device{Host:devices[reqData["MacAddress"]]["Host"]}
     err = device.On()
     if err != nil {
-        log.Printf("Could not turn on %s: %s", reqData["MacAddress"], err)
+        log.Warningf("Could not turn on %s: %s", reqData["MacAddress"], err)
     } else {
-        log.Printf("Turned on %s", reqData["MacAddress"])
+        log.Debugf("Turned on %s", reqData["MacAddress"])
     }
 
-    HttpLog(r, 200)
+    httpLog(r, http.StatusOK)
 }
 
 
 
 func apiOffHandler(w http.ResponseWriter, r *http.Request) {
-    devices, err := ReadDevices(config_g)
+    devices, err := readDevices()
     if err != nil {
-        log.Println(err)
+        log.Errorf("%s", err)
         return
     }
 
     rbody, err := ioutil.ReadAll(r.Body)
     if err != nil {
-        log.Printf("ERROR: %s", err)
+        log.Errorf("%s", err)
         http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        HttpLog(r, 500)
+        httpLog(r, http.StatusInternalServerError)
         return
     }
+    log.Tracef("Request Body: '%s'", rbody)
 
     var reqData map[string]string
     err = json.Unmarshal(rbody, &reqData)
     if err != nil {
-        log.Printf("ERROR: %s", err)
+        log.Errorf("%s", err)
         http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        HttpLog(r, 500)
+        httpLog(r, http.StatusInternalServerError)
         return
     }
+    log.Tracef("Request Json: %+v", reqData)
 
     device := &wemo.Device{Host:devices[reqData["MacAddress"]]["Host"]}
     err = device.Off()
     if err != nil {
-        log.Printf("Could not turn off %s: %s", reqData["MacAddress"], err)
+        log.Warningf("Could not turn off %s: %s", reqData["MacAddress"], err)
     } else {
-        log.Printf("Turned off %s", reqData["MacAddress"])
+        log.Debugf("Turned off %s", reqData["MacAddress"])
     }
 
-    HttpLog(r, 200)
+    httpLog(r, http.StatusOK)
 }
 
 
 
 func apiScheduleHandler(w http.ResponseWriter, r *http.Request) {
-/*
-    devices, err := ReadDevices(config_g)
+    schedule, err := readSchedule(config.ScheduleFile)
     if err != nil {
-        log.Println(err)
+        log.Errorf("%s", err)
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        httpLog(r, http.StatusInternalServerError)
         return
     }
 
-    rbody, err := ioutil.ReadAll(r.Body)
+    jsonOut, err := json.Marshal(schedule)
     if err != nil {
-        log.Printf("ERROR: %s", err)
         http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-        HttpLog(r, 500)
+        httpLog(r, http.StatusInternalServerError)
         return
     }
-//*/
-    readSchedule(config_g.ScheduleFile)
+    w.Write([]byte(jsonOut))
+
+    httpLog(r, http.StatusOK)
 }
 
 
@@ -434,16 +512,19 @@ func nullPage(w http.ResponseWriter, r *http.Request) {
 
 
 
-func StartHttp (config Config_t) {
-    config_g = config
-    log.Printf("Starting webserver on port %d\n", config.HttpPort)
+/*
+    Assigns handlers to URLs, starts the HTTP server
+*/
+func StartHttp () {
+    gologger = golog.New(golog.Writer(), golog.Prefix(), golog.Flags())
+    log.Infof("Starting webserver on port %d", config.HttpPort)
 
     http.HandleFunc("/", nullPage)
 
     // Web UI handlers
     http.HandleFunc("/ui", guiHandler)
+    http.HandleFunc("/ui/discover", discoverHandler)
     http.HandleFunc("/favicon.ico", iconHandler)
-    http.HandleFunc("/discover", discoverHandler)
 
     // API handlers
     http.HandleFunc("/api/list", apiListHandler)

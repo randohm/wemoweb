@@ -2,6 +2,8 @@ github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1 h1:EGx4pi6eqNxGa
 github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
 github.com/jtolds/gls v4.20.0+incompatible h1:xdiiI2gbIgH/gLH7ADydsJ1uDOEzR8yvV7C0MuV77Wo=
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
+github.com/juju/loggo v0.0.0-20200526014432-9ce3a2e09b5e h1:FdDd7bdI6cjq5vaoYlK1mfQYfF9sF2VZw8VEZMsl5t8=
+github.com/juju/loggo v0.0.0-20200526014432-9ce3a2e09b5e/go.mod h1:vgyd7OREkbtVEN/8IXZe5Ooef3LQePvuBm9UWj6ZL8U=
 github.com/randohm/go.wemo v0.0.0-20190524055743-f78eae3157b5 h1:1zLmPPAfsQYdiS/QNmPqp2t5PIDZIBSmGOY+uXhu6bQ=
 github.com/randohm/go.wemo v0.0.0-20190524055743-f78eae3157b5/go.mod h1:KQJLOgy9OV1vGkTADWQ+yPlVlx1HiC4AHP2gvt59Nw8=
 github.com/savaki/httpctx v0.0.0-20150513232136-dc87db79c5f8 h1:bwktAh6aB1eSs+94dGUepP24FMD5dnhIjzMG7PORGmE=
