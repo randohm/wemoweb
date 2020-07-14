@@ -27,6 +27,7 @@ type Config struct {
     TlsCertFile string      // Path to TLS cert file
     TlsKeyFile string       // Path to TLS key file
     ScheduleFile string     // Path to YAML file containing schedule information
+    FavIcon string          // Path to favicon.ico file
 }
 
 

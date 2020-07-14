@@ -47,6 +47,9 @@ func readUsers() (map[string]string, error) {
 
 
 
+/*
+    Uses Go's log to print out a standard webserver access log.
+*/
 func httpLog(r *http.Request, status int) {
     user, _, _ := r.BasicAuth()
     if user == "" {
@@ -93,7 +96,7 @@ func generateRootPage(w http.ResponseWriter, devices map[string]map[string]strin
     for mac, v := range devices {
         d := &wemo.Device{Host:v["Host"]}
         v["state"] = fmt.Sprintf("%d", d.GetBinaryState())
-        devicesList = append(devicesList, map[string]string{ "mac": mac, "FriendlyName": v["FriendlyName"], "state": v["state"] })
+        devicesList = append(devicesList, map[string]string{ "Mac": mac, "FriendlyName": v["FriendlyName"], "state": v["state"] })
     }
     sort.Slice(devicesList, func(i, j int) bool { return devicesList[i]["FriendlyName"] < devicesList[j]["FriendlyName"]})
     log.Tracef("DevicesList: %+v", devicesList)
@@ -209,6 +212,23 @@ func timerOff(device *wemo.Device, minutes int) {
 
 
 func iconHandler(w http.ResponseWriter, r *http.Request) {
+    _, err := os.Stat(config.FavIcon)
+    if err != nil {
+        log.Infof("favicon file '%s' not found: %s", config.FavIcon, err)
+        http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+        httpLog(r, http.StatusNotFound)
+        return
+    }
+
+    iconData, err := ioutil.ReadFile(config.FavIcon)
+    if err != nil {
+        log.Errorf("Could not load favicon file '%s': %s", config.FavIcon, err)
+        http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+        httpLog(r, http.StatusNotFound)
+        return
+    }
+
+    w.Write(iconData)
     httpLog(r, http.StatusOK)
 }
 
@@ -276,6 +296,63 @@ func discoverHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    httpLog(r, http.StatusOK)
+}
+
+
+
+func scheduleHandler(w http.ResponseWriter, r *http.Request) {
+    message := ""
+
+    devices, err := readDevices()
+    if err != nil {
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        httpLog(r, http.StatusInternalServerError)
+        log.Errorf("%s", err)
+        return
+    }
+
+    schedule, err := readSchedule(config.ScheduleFile)
+    if err != nil {
+        log.Errorf("%s", err)
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        httpLog(r, http.StatusInternalServerError)
+        return
+    }
+
+    _, err = os.Stat(config.HtmlTemplate)
+    if err != nil {
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        httpLog(r, http.StatusInternalServerError)
+        log.Errorf("%s", err)
+        return
+    }
+
+    var scheduleList []ScheduleItem
+    for mac, v := range schedule {
+        v.FriendlyName = devices[mac]["FriendlyName"]
+        scheduleList = append(scheduleList, v)
+    }
+    sort.Slice(scheduleList, func(i, j int) bool { return scheduleList[i].FriendlyName < scheduleList[j].FriendlyName})
+
+    tmpl, _ := template.ParseFiles(config.HtmlTemplate)
+    httpData := struct {
+        Mode string
+        ScheduleData []ScheduleItem
+        Message string
+    }{
+        Mode: "schedule",
+        ScheduleData: scheduleList,
+        Message: message,
+    }
+
+    err = tmpl.Execute(w, httpData)
+    if err != nil {
+        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+        httpLog(r, http.StatusInternalServerError)
+        log.Errorf("%s", err)
+        return
+    }
     httpLog(r, http.StatusOK)
 }
 
@@ -524,6 +601,7 @@ func StartHttp () {
     // Web UI handlers
     http.HandleFunc("/ui", guiHandler)
     http.HandleFunc("/ui/discover", discoverHandler)
+    http.HandleFunc("/ui/schedule", scheduleHandler)
     http.HandleFunc("/favicon.ico", iconHandler)
 
     // API handlers

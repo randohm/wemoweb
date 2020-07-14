@@ -22,6 +22,7 @@ import (
 type ScheduleItem struct {
     Mac string // MAC address, no delimiters
     Timeline []map[string]string // Sorted array of maps 
+    FriendlyName string     // Should only be used for HTML templating
 }
 
 
