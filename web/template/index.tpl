@@ -170,8 +170,6 @@ input.minute_input {
 </tbody>
 </table>
 
-<p>{{.Message}}</p>
-
 <table class="device_table">
 <tbody>
 <tr>
@@ -179,8 +177,10 @@ input.minute_input {
     <td style="text-align:center"><a href="/ui/schedule">Schedule</a></td>
     <td style="text-align:center"><a href="/ui/discover">Discover</a></td>
 </tr>
+<tr>
+    <td style="text-align:center" colspan="3">{{.Message}}</td>
+</tr>
 </tbody>
 </table>
-
 </body>
 </html>
