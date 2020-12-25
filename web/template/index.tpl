@@ -33,6 +33,20 @@ tr.discover_tr {
   background: #cccccc;
 }
 
+td.device_td_h1 {
+  padding: 5px;
+  width: 60%;
+  text-align: center;
+  font-size: 28px;
+}
+
+td.device_td_h2 {
+  padding: 5px;
+  width: 60%;
+  text-align: left;
+  font-size: 22px;
+}
+
 td.device_td_name {
   padding: 5px;
   width: 60%;
@@ -106,42 +120,67 @@ input.minute_input {
 
 <table class="device_table">
 <tbody>
-{{if (eq .Mode "main") -}}
-  {{- range $key, $value := .DeviceData}}
-<tr class="{{if eq $value.state "1"}}device_tr_active{{else}}device_tr_inactive{{end}}">
-    <td class="device_td_name">{{$key}}</td>
-    {{- if not (eq $value.state "-1")}}
+{{ if eq .Mode "main" -}}
+  {{- range .DeviceData }}
+<tr class="{{if eq .state "1"}}device_tr_active{{else}}device_tr_inactive{{end}}">
+    <td class="device_td_name">{{.FriendlyName}}</td>
+    {{- if not (eq .state "-1")}}
     <td class="device_td_button">
-        <button class="action_button" OnClick="window.location.href='/?op={{if eq $value.state "1"}}off{{else}}on{{end}}&dev={{$key}}'">{{if eq $value.state "1"}}Off{{else}}On{{end}}</button>
+        <button class="action_button" OnClick="window.location.href='/ui?op={{if eq .state "1"}}off{{else}}on{{end}}&dev={{.Mac}}'">{{if eq .state "1"}}Off{{else}}On{{end}}</button>
     </td>
     <td class="device_td_button">
         <form>
         <input type="hidden" name="op" value="timer"/>
-        <input type="hidden" name="dev" value="{{$key}}"/>
+        <input type="hidden" name="dev" value="{{.Mac}}"/>
         <input type="text" class="minute_input" value="15" size="2" maxlength="2" name="len"/>
         <button class="timer_button" OnClick="form.submit()">T</button>
         </form>
     </td>
-    {{- else}}
+    {{- else }}
     <td colspan="2" class="td_notfound">Not found</td>
-    {{- end}}
+    {{- end }}
 </tr>
-  {{- end}}
-{{ else if (eq .Mode "discover") -}}
+  {{- end }}
+{{ else if eq .Mode "discover" -}}
+<tr>
+    <td class="device_td_h1" colspan="2">Discovering Devices</td>
+</tr>
 <tr><th>Discovered Device</th><th>IP:port</th></tr>
-  {{- range $key, $value := .DeviceData }}
+  {{- range .DeviceData }}
 <tr class="discover_tr">
-    <td class="device_td">{{$key}}</td><td class="device_td">{{$value.ip_port}}</td>
+    <td class="device_td">{{.FriendlyName}}</td><td class="device_td">{{.Host}}</td>
 </tr>
-  {{- end}}
-{{end -}}
+  {{- end }}
+{{ else if eq .Mode "schedule" -}}
+<tr>
+    <td class="device_td_h1" colspan="2">Schedules</td>
+</tr>
+  {{- range .ScheduleData }}
+<tr>
+    <td class="device_td_h2">{{.FriendlyName}}</td>
+</tr>
+    {{- range .Timeline  }}
+<tr class="{{if eq .state "on"}}device_tr_active{{else}}device_tr_inactive{{end}}">
+    <td class="device_td_name">{{.time}}</td>
+    <td class="device_td_name">{{.state}}</td>
+</tr>
+    {{- end }}
+  {{- end }}
+{{ end -}}
 </tbody>
 </table>
-<p><a href="/">{{ if (eq .Mode "main") -}}Refresh{{else -}}Main Page{{end -}}</a></p>
 
-<p><a href="/discover">Discover</a></p>
-
-<p>{{.Message}}</p>
-
+<table class="device_table">
+<tbody>
+<tr>
+    <td style="text-align:center"><a href="/ui">{{ if eq .Mode "main" -}}Refresh{{else -}}Home{{end -}}</a></td>
+    <td style="text-align:center"><a href="/ui/schedule">Schedule</a></td>
+    <td style="text-align:center"><a href="/ui/discover">Discover</a></td>
+</tr>
+<tr>
+    <td style="text-align:center" colspan="3">{{.Message}}</td>
+</tr>
+</tbody>
+</table>
 </body>
 </html>
