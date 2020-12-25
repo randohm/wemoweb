@@ -37,7 +37,7 @@ func Main() error {
     // Setup flags
     configFile := flag.String("config", defaultConfigFile, "Configuration file path")
     mode := flag.String("mode", "server", "Run mode: 'server', 'discover', 'schedule'")
-    port := flag.Int("port", 0, "Listen port for HTTP(S) service")
+    listen := flag.String("listen", "", "Listen address for HTTP(S) service")
     eth := flag.String("eth", "", "Ethernet device to listen on")
     enforce := flag.Bool("enforce", false, "Enforce the schedule. Requires --mode=schedule")
     debug := flag.Int("debug", 0, "Debug level. 0=none 1=debug 2=trace")
@@ -61,8 +61,8 @@ func Main() error {
     }
 
     // Override configs with flags
-    if *port > 0 {
-        config.HttpPort = *port
+    if *listen != "" {
+        config.Listen = *listen
     }
     if *eth != "" {
         config.EthDevice = *eth
@@ -70,6 +70,7 @@ func Main() error {
 
     // Execute according to mode
     if *mode == "server" {
+        go RunScheduler()
         StartHttp()
     } else if *mode == "discover" {
         DiscoverCli()

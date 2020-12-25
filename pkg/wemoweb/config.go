@@ -17,7 +17,7 @@ const defaultConfigFile = "./config.yml"
     This is meant to load from a YAML file with corresponding keys.
 */
 type Config struct {
-    HttpPort int            // TCP port for the HTTP listener to bind
+    Listen string           // Address for the HTTP listener to bind
     EthDevice string        // Ethernet device to discover devices on
     DevicesFile string      // Path to YAML file storing device information
     DiscoveryTimeout int    // Timeout on discovery attempts

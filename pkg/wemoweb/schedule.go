@@ -239,3 +239,13 @@ func EnforceSchedule() (error) {
 func saveSchedule() (error) {
     return nil
 }
+
+
+
+func RunScheduler() {
+    for {
+        log.Debugf("Scheduler enforcing states")
+        EnforceSchedule()
+        time.Sleep(time.Duration(1) * time.Minute)
+    }
+}

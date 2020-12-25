@@ -490,7 +490,6 @@ func apiOnHandler(w http.ResponseWriter, r *http.Request) {
         log.Errorf("%s", err)
         http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
         httpLog(r, http.StatusInternalServerError)
-        http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
         return
     }
     log.Tracef("Request Body: '%s'", rbody)
@@ -594,7 +593,7 @@ func nullPage(w http.ResponseWriter, r *http.Request) {
 */
 func StartHttp () {
     gologger = golog.New(golog.Writer(), golog.Prefix(), golog.Flags())
-    log.Infof("Starting webserver on port %d", config.HttpPort)
+    log.Infof("Starting webserver on %s", config.Listen)
 
     http.HandleFunc("/", nullPage)
 
@@ -612,11 +611,14 @@ func StartHttp () {
     http.HandleFunc("/api/off", apiOffHandler)
     http.HandleFunc("/api/schedule", apiScheduleHandler)
 
-
-    portStr := fmt.Sprintf(":%d", config.HttpPort)
+    var err error
     if config.UseTls == true {
-        http.ListenAndServeTLS(portStr, config.TlsCertFile, config.TlsKeyFile, nil)
+        err = http.ListenAndServeTLS(config.Listen, config.TlsCertFile, config.TlsKeyFile, nil)
     } else {
-        http.ListenAndServe(portStr, nil)
+        err = http.ListenAndServe(config.Listen, nil)
+    }
+    if err != nil {
+        log.Errorf("Could not start webserver: %s", err)
+        os.Exit(1)
     }
 }
